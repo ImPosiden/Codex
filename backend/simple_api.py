@@ -26,11 +26,14 @@ except Exception as e:
 # Database imports (optional Snowflake)
 try:
     import snowflake.connector
-    from dotenv import load_dotenv
-    load_dotenv()  # Load environment variables from .env file
     SNOWFLAKE_AVAILABLE = True
-except ImportError:
+    print("✅ Snowflake connector available")
+except ImportError as e:
     SNOWFLAKE_AVAILABLE = False
+    print(f"⚠️ Snowflake connector not available: {e}")
+except Exception as e:
+    SNOWFLAKE_AVAILABLE = False
+    print(f"⚠️ Snowflake connector error: {e}")
 
 # YOLO model imports
 try:
@@ -319,11 +322,13 @@ async def analyze_image(file: UploadFile = File(...)):
         # Run YOLO inference
         detections = run_yolo_inference(file_path)
         
+        # Generate unique inspection ID
+        inspection_id = f"insp_{uuid.uuid4().hex[:8]}"
+        
         # Enhanced: Analyze with Cortex LLM for risk assessment
         risk_analysis = analyze_with_cortex_llm(detections)
         
-        # Prepare inspection data
-        inspection_id = str(uuid.uuid4())
+        # Prepare inspection data for database
         inspection_data = {
             "inspection_id": inspection_id,
             "image_name": file.filename,
@@ -335,18 +340,30 @@ async def analyze_image(file: UploadFile = File(...)):
         # Save to Snowflake
         db_saved = save_to_snowflake(inspection_data)
         
+        # Format response as Cortex LLM-style output
+        cortex_response = {
+            "inspection_id": inspection_id,
+            "image_name": file.filename,
+            "timestamp": datetime.now().isoformat(),
+            "analysis": {
+                "risk_score": risk_analysis["risk_score"],
+                "risk_level": risk_analysis["risk_level"], 
+                "urgency": risk_analysis["urgency"],
+                "summary": risk_analysis["summary"],
+                "recommendations": risk_analysis["recommendations"],
+                "technical_details": {
+                    "total_detections": len(detections),
+                    "detections": detections,
+                    "analysis_method": risk_analysis.get("analysis_method", "cortex_llm")
+                }
+            },
+            "database_saved": db_saved
+        }
+        
         # Clean up uploaded file (optional)
         # os.remove(file_path)
         
-        return JSONResponse(content={
-            "success": True,
-            "inspection_id": inspection_id,
-            "image_name": file.filename,
-            "detections": detections,
-            "total_detections": len(detections),
-            "risk_analysis": risk_analysis,
-            "saved_to_database": db_saved
-        })
+        return JSONResponse(content=cortex_response)
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
