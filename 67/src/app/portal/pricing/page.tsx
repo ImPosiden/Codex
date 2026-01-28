@@ -3,48 +3,32 @@
 export default function Pricing() {
   const plans = [
     {
-      name: 'Starter',
-      price: 29,
-      description: 'Perfect for individuals and small projects',
+      name: 'Minor repair',
+      price: '6 - 6.7',
+      description: 'Quick fix for small issues like leaks, cracks, or loose wiring without major replacement.',
       features: [
-        '3 Services included',
-        'Basic support',
-        '10 GB storage',
-        'Email integration',
-        'Monthly billing',
+        'Fast service turnaround',
+        'No major dismantling',
+        'Low cost solution',
+        'Performed by certified staff',
+        'Suitable for small, non-structural issues',
       ],
       highlighted: false,
     },
     {
-      name: 'Professional',
-      price: 79,
-      description: 'Ideal for growing businesses',
+      name: 'Major repair',
+      price: '60 - 67',
+      description: 'Comprehensive repair involving replacement or structural work to fix serious or recurring issues.',
       features: [
-        'All Starter features',
-        'Unlimited services',
-        'Priority support',
-        '100 GB storage',
-        'API access',
-        'Custom domain',
-        'Monthly or annual billing',
+        'In-depth inspection',
+        'Material replacement involved',
+        'Skilled technician required',
+        'Longer repair duration',
+        'Suitable for structural or high-risk issues',
       ],
       highlighted: true,
     },
-    {
-      name: 'Enterprise',
-      price: 199,
-      description: 'For large-scale operations',
-      features: [
-        'All Professional features',
-        'Dedicated support',
-        '1 TB storage',
-        'Advanced analytics',
-        'Custom integrations',
-        'SLA guarantee',
-        'Monthly or annual billing',
-      ],
-      highlighted: false,
-    },
+   
   ];
 
   return (
@@ -77,57 +61,45 @@ export default function Pricing() {
       {/* Pricing Cards */}
       <section className="py-16 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {plans.map((plan, index) => (
               <div
                 key={index}
-                className={`rounded-lg shadow-md overflow-hidden transition-transform hover:scale-105 ${
-                  plan.highlighted
-                    ? 'bg-blue-600 text-white md:scale-105 md:shadow-xl'
-                    : 'bg-white'
-                }`}
+                className="group relative rounded-lg shadow-md overflow-hidden transition-all duration-300 hover:scale-110 hover:shadow-2xl bg-blue-600 text-white cursor-pointer"
               >
+                {/* Hover Popup Tooltip */}
+                <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap z-10">
+                  Click to select {plan.name}
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
+                </div>
+
                 {/* Card Header */}
-                <div className={`p-8 ${plan.highlighted ? 'bg-blue-700' : 'bg-gray-50'}`}>
-                  <h3 className={`text-2xl font-bold mb-2 ${plan.highlighted ? 'text-white' : ''}`}>
+                <div className="p-8 bg-blue-700">
+                  <h3 className="text-2xl font-bold mb-2 text-white">
                     {plan.name}
                   </h3>
-                  <p className={`text-sm ${plan.highlighted ? 'text-blue-100' : 'text-gray-600'}`}>
+                  <p className="text-sm text-blue-100">
                     {plan.description}
                   </p>
                 </div>
 
                 {/* Price */}
-                <div className={`p-8 ${plan.highlighted ? 'bg-blue-600' : 'bg-white'}`}>
-                  <div className="mb-4">
-                    <span className="text-5xl font-bold">${plan.price}</span>
-                    <span className={`text-sm ${plan.highlighted ? 'text-blue-100' : 'text-gray-600'}`}>
-                      /month
-                    </span>
+                <div className="px-8 pt-6 pb-2 bg-blue-600">
+                  <div>
+                    <span className="text-4xl font-bold">${plan.price}</span>
                   </div>
-                  <button
-                    className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                      plan.highlighted
-                        ? 'bg-white text-blue-600 hover:bg-blue-50'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
-                  >
-                    Get Started
-                  </button>
                 </div>
 
                 {/* Features */}
-                <div className={`p-8 ${plan.highlighted ? 'bg-blue-600' : 'bg-white'}`}>
+                <div className="px-8 pt-2 pb-8 bg-blue-600">
                   <ul className="space-y-4">
                     {plan.features.map((feature, idx) => (
                       <li
                         key={idx}
-                        className={`flex items-center gap-3 ${
-                          plan.highlighted ? 'text-blue-100' : 'text-gray-700'
-                        }`}
+                        className="flex items-center gap-3 text-blue-100"
                       >
                         <svg
-                          className="w-5 h-5 text-green-500"
+                          className="w-5 h-5 text-green-400"
                           fill="currentColor"
                           viewBox="0 0 20 20"
                         >

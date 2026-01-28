@@ -53,9 +53,7 @@ export default function Dashboard() {
               </a>
             </li>
             <li>
-              <a href="/admin/settings" className="text-blue-600 hover:text-blue-800 font-medium">
-                System Settings
-              </a>
+              
             </li>
           </ul>
         </div>
