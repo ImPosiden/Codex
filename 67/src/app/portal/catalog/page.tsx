@@ -2,12 +2,15 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Camera, Upload, CheckCircle, X, ArrowRight, Home } from 'lucide-react';
+import { Camera, Upload, CheckCircle, X, ArrowRight, Home, AlertTriangle, Loader2 } from 'lucide-react';
 
 export default function PortalHome() {
   const router = useRouter();
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [submittedProperties, setSubmittedProperties] = useState<any[]>([]);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -19,23 +22,62 @@ export default function PortalHome() {
     }
   }, []);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const imageData = reader.result as string;
-        // Store image in localStorage
+        setUploadedImage(imageData);
+        
+        // Store image immediately after setting it
         localStorage.setItem('propertyImage', imageData);
-        // Redirect to form page
-        router.push('/portal/property-form');
+        
+        // Analyze image with FastAPI backend
+        await analyzeImage(file, imageData);
       };
       reader.readAsDataURL(file);
     }
   };
 
+  const analyzeImage = async (file: File, imageData: string) => {
+    setIsAnalyzing(true);
+    setAnalysisError('');
+    setAnalysisResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analyze`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      setAnalysisResult(result);
+      
+      // Store analysis result in localStorage
+      localStorage.setItem('analysisResult', JSON.stringify(result));
+      
+    } catch (error: any) {
+      console.error('Analysis failed:', error);
+      setAnalysisError(error.message || 'Failed to analyze image. Please try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const handleClearImage = () => {
     setUploadedImage(null);
+    setAnalysisResult(null);
+    setAnalysisError('');
+    localStorage.removeItem('propertyImage');
+    localStorage.removeItem('analysisResult');
   };
 
   return (
@@ -111,6 +153,96 @@ export default function PortalHome() {
                   <div className="relative rounded-lg overflow-hidden bg-gray-100">
                     <img src={uploadedImage} alt="Property" className="w-full h-64 object-cover" />
                   </div>
+                  
+                  {/* Analysis Loading State */}
+                  {isAnalyzing && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+                      <Loader2 className="text-blue-600 flex-shrink-0 animate-spin" size={24} />
+                      <div>
+                        <p className="font-semibold text-blue-900">Analyzing Image...</p>
+                        <p className="text-sm text-blue-700">AI is checking for structural defects</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Analysis Error */}
+                  {analysisError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+                      <AlertTriangle className="text-red-600 flex-shrink-0" size={24} />
+                      <div>
+                        <p className="font-semibold text-red-900">Analysis Failed</p>
+                        <p className="text-sm text-red-700">{analysisError}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Analysis Results */}
+                  {analysisResult && !isAnalyzing && (
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
+                      <h3 className="font-bold text-gray-900 text-lg">AI Analysis Results</h3>
+                      
+                      {/* Risk Assessment */}
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-semibold text-gray-900">Risk Level</p>
+                          <p className="text-sm text-gray-600">{analysisResult.analysis?.summary}</p>
+                        </div>
+                        <div className={`px-3 py-1 rounded-full text-sm font-bold ${
+                          analysisResult.analysis?.risk_level === 'CRITICAL' ? 'bg-red-100 text-red-800' :
+                          analysisResult.analysis?.risk_level === 'HIGH' ? 'bg-orange-100 text-orange-800' :
+                          analysisResult.analysis?.risk_level === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {analysisResult.analysis?.risk_level}
+                        </div>
+                      </div>
+                      
+                      {/* Risk Score */}
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <p className="font-semibold text-gray-900 mb-2">Risk Score: {analysisResult.analysis?.risk_score}/100</p>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full ${
+                              (analysisResult.analysis?.risk_score || 0) >= 80 ? 'bg-red-500' :
+                              (analysisResult.analysis?.risk_score || 0) >= 60 ? 'bg-orange-500' :
+                              (analysisResult.analysis?.risk_score || 0) >= 30 ? 'bg-yellow-500' :
+                              'bg-green-500'
+                            }`}
+                            style={{ width: `${analysisResult.analysis?.risk_score || 0}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      {/* Recommendations */}
+                      {analysisResult.analysis?.recommendations && (
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <p className="font-semibold text-blue-900 mb-2">Recommendations</p>
+                          <ul className="text-sm text-blue-800 space-y-1">
+                            {analysisResult.analysis.recommendations.map((rec: string, index: number) => (
+                              <li key={index} className="flex items-start gap-2">
+                                <span className="text-blue-600 mt-1">•</span>
+                                <span>{rec}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {/* Urgency */}
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span className="font-semibold text-gray-900">Urgency Level:</span>
+                        <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                          analysisResult.analysis?.urgency === 'IMMEDIATE' ? 'bg-red-100 text-red-800' :
+                          analysisResult.analysis?.urgency === 'URGENT' ? 'bg-orange-100 text-orange-800' :
+                          analysisResult.analysis?.urgency === 'MODERATE' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {analysisResult.analysis?.urgency}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
                   <button
                     onClick={handleClearImage}
                     className="w-full px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition flex items-center justify-center gap-2 font-medium"
@@ -118,23 +250,32 @@ export default function PortalHome() {
                     <X size={18} />
                     Clear & Upload New
                   </button>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3 mb-4">
-                    <CheckCircle className="text-green-600 flex-shrink-0" size={24} />
-                    <div>
-                      <p className="font-semibold text-black">Photo Uploaded</p>
-                      <p className="text-sm text-black">Click next to fill in details</p>
+                  
+                  {(analysisResult || analysisError) && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3 mb-4">
+                      <CheckCircle className="text-green-600 flex-shrink-0" size={24} />
+                      <div>
+                        <p className="font-semibold text-black">Analysis Complete</p>
+                        <p className="text-sm text-black">Click next to save property details</p>
+                      </div>
                     </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      localStorage.setItem('propertyImage', uploadedImage);
-                      router.push('/portal/property-form');
-                    }}
-                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition flex items-center justify-center gap-2"
-                  >
-                    Next: Property Details
-                    <ArrowRight size={18} />
-                  </button>
+                  )}
+                  
+                  {(analysisResult || analysisError) && (
+                    <button
+                      onClick={() => {
+                        localStorage.setItem('propertyImage', uploadedImage);
+                        if (analysisResult) {
+                          localStorage.setItem('analysisResult', JSON.stringify(analysisResult));
+                        }
+                        router.push('/portal/property-form');
+                      }}
+                      className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition flex items-center justify-center gap-2"
+                    >
+                      Next: Property Details
+                      <ArrowRight size={18} />
+                    </button>
+                  )}
                 </div>
               )}
             </div>
