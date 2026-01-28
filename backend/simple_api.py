@@ -4,6 +4,7 @@ Upload an image -> Analyze with YOLO -> Store in Snowflake -> Return results
 """
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import cv2
 import numpy as np
 import uuid
@@ -43,6 +44,15 @@ except ImportError:
     MODEL_AVAILABLE = False
 
 app = FastAPI(title="Simple YOLO Analysis API", version="1.0.0")
+
+# Add CORS middleware to allow frontend requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
+)
 
 # Configuration
 MODEL_PATH = "model/best1.onnx"
@@ -351,13 +361,13 @@ async def analyze_image(file: UploadFile = File(...)):
                 "urgency": risk_analysis["urgency"],
                 "summary": risk_analysis["summary"],
                 "recommendations": risk_analysis["recommendations"],
-                "technical_details": {
-                    "total_detections": len(detections),
-                    "detections": detections,
-                    "analysis_method": risk_analysis.get("analysis_method", "cortex_llm")
-                }
+                # "technical_details": {
+                #     "total_detections": len(detections),
+                #     "detections": detections,
+                #     "analysis_method": risk_analysis.get("analysis_method", "cortex_llm")
+                # }
             },
-            "database_saved": db_saved
+            # "database_saved": db_saved
         }
         
         # Clean up uploaded file (optional)

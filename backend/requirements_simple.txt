@@ -1,0 +1,17 @@
+# Core API
+fastapi==0.115.6
+uvicorn==0.40.0
+python-multipart==0.0.22
+
+# Image processing
+opencv-python==4.13.0.90
+numpy==1.26.4
+
+# YOLO inference
+onnxruntime==1.23.2
+
+# Snowflake database (optional)
+snowflake-connector-python
+
+# File handling
+pillow
