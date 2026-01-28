@@ -1,12 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function Signup() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -15,9 +20,61 @@ export default function Signup() {
     agreeTerms: false,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(formData);
+    setError('');
+    setLoading(true);
+
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.agreeTerms) {
+      setError('You must agree to the Terms of Service and Privacy Policy');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.name,
+          },
+        },
+      });
+
+      if (signUpError) {
+        setError(signUpError.message);
+        return;
+      }
+
+      if (data.user) {
+        // Check if email verification is required
+        if (data.user.identities && data.user.identities.length === 0) {
+          setError('An account with this email already exists');
+          return;
+        }
+        
+        router.push('/portal/login?message=Check your email to confirm your account');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -28,6 +85,13 @@ export default function Signup() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
           <p className="text-gray-600">Join ServiceHub and start using our services</p>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800 text-sm">{error}</p>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -140,9 +204,10 @@ export default function Signup() {
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition-colors mt-6"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 rounded-lg transition-colors mt-6"
           >
-            Create Account
+            {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
 
